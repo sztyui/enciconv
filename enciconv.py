@@ -30,6 +30,8 @@ class Application(tk.Frame):
         self.create_widgets()
         self.pack_well()
 
+        self.inf, self.ouf, self.suf = str(), str(), str()
+
     def create_frames(self):
         self.file_frame = tk.Frame(self, bd=1, bg="yellow")
         self.file_frame.grid(row=0, column=0, sticky=(tk.N, tk.S, tk.E, tk.W))
@@ -62,7 +64,7 @@ class Application(tk.Frame):
                                       wraplength=130,
                                       state=tk.DISABLED)
         self.subtitle_file_button = tk.Button(self.file_frame, text="...",
-                                              command=lambda: self.get_file(self.subtitle_filename),
+                                              command=lambda: self.get_sub(self.subtitle_filename),
                                               state=tk.DISABLED)
 
         # Feldolgozási gombok :)
@@ -83,10 +85,20 @@ class Application(tk.Frame):
         tk.Grid.columnconfigure(self.button_frame, 0, weight=1)
 
     def convert(self):
-        command = "mencoder -oac mp3lame -ovc xvid -xvidencopts pass=1 -o {1} {0}".format(
-            self.input_filename.get(),
-            self.output_filename.get()
-        )
+        if not self.subtitle_int.get():
+            command = "mencoder -oac mp3lame -ovc xvid -xvidencopts pass=1 -o {1} {0}".format(
+                self.input_filename.get(),
+                self.output_filename.get()
+            )
+        else:
+            command = "mencoder -oac mp3lame -ovc xvid -xvidencopts pass=1 -sub {2} -o {1} {0}".format(
+                self.input_filename.get(),
+                self.output_filename.get(),
+                self.subtitle_filename.get()
+            )
+
+        print(command)
+        return
         process = subprocess.Popen(command.split(),
                                   stdout=subprocess.PIPE,
                                   stderr=subprocess.PIPE
@@ -104,7 +116,6 @@ class Application(tk.Frame):
                 title="Válaszd ki a fájlt!"
             )
         )
-        print(var.get())
         self.output_filename.set("{0}.{1}".format(
             os.path.splitext(var.get())[0], 'avi'))
         self.output_file_button.config(state="normal")
@@ -120,6 +131,15 @@ class Application(tk.Frame):
             )
         )
         self.convert_button.config(state="normal")
+        self.master.update_idletasks()
+
+    def get_sub(self, var):
+        var.set(
+            filedialog.askopenfilename(
+                initialdir=Application.user,
+                title="Válaszd ki a feliratot!"
+            )
+        )
         self.master.update_idletasks()
 
     def subtitle_checked(self):
