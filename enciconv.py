@@ -15,7 +15,6 @@ class Application(tk.Frame):
         self.master = master
         super().__init__(self.master)
         self.winfo_toplevel().title("Enciconv <3")
-        self.winfo_toplevel().geometry("170x170")
         self.pack()
 
         self.input_filename = tk.StringVar(self)
@@ -30,13 +29,25 @@ class Application(tk.Frame):
         self.create_widgets()
         self.pack_well()
 
-        self.inf, self.ouf, self.suf = str(), str(), str()
+        self.__input_filename = str()
+        self.__input_set = False
+        self.__output_filename = str()
+        self.__output_set = False
+        self.__subtitle_filename = str()
+        self. __subtitle_set = False
 
     def create_frames(self):
-        self.file_frame = tk.Frame(self, bd=1, bg="yellow")
-        self.file_frame.grid(row=0, column=0, sticky=(tk.N, tk.S, tk.E, tk.W))
+        # Top level frame, hogy ossze pakoljak mindent.
+        self.toplevel_frame = tk.Frame(self, bd=1)
+        self.toplevel_frame.grid(row=0, column=0, sticky=(tk.N, tk.S, tk.E, tk.W))
 
-        self.button_frame = tk.Frame(self, bd=1, bg="red")
+        # Elso frame az input fajloknak
+        self.file_frame = tk.Frame(self.toplevel_frame, bd=1)
+        self.file_frame.grid(row=0, column=0, sticky=(tk.N, tk.S, tk.E, tk.W))
+        self.file_frame.grid_columnconfigure(0, weight=1)
+
+        # Masodik frame a gomboknak
+        self.button_frame = tk.Frame(self.toplevel_frame, bd=1)
         self.button_frame.grid(row=1, column=0, sticky=(tk.N, tk.S, tk.E, tk.W))
 
     def create_widgets(self):
@@ -45,14 +56,14 @@ class Application(tk.Frame):
                                    textvariable=self.input_filename,
                                    wraplength=130)
         self.input_file_button = tk.Button(self.file_frame, text="...",
-                                           command=lambda: self.get_file(self.input_filename))
+                                           command=self.get_file)
 
         # Output adatok
         self.output_file = tk.Label(self.file_frame,
                                     textvariable=self.output_filename,
                                     wraplength=130)
         self.output_file_button = tk.Button(self.file_frame, text="...",
-                                            command=lambda: self.save_file(self.output_filename),
+                                            command=self.save_file,
                                             state=tk.DISABLED)
         # Feliratok hozzaadasa
         self.subtitle_checkbox = tk.Checkbutton(self.file_frame,
@@ -64,7 +75,7 @@ class Application(tk.Frame):
                                       wraplength=130,
                                       state=tk.DISABLED)
         self.subtitle_file_button = tk.Button(self.file_frame, text="...",
-                                              command=lambda: self.get_sub(self.subtitle_filename),
+                                              command=self.get_sub,
                                               state=tk.DISABLED)
 
         # Feldolgozási gombok :)
@@ -73,32 +84,30 @@ class Application(tk.Frame):
 
     def pack_well(self):
         # Megjelenítés
-        self.input_file.grid(row=0, column=0, sticky=(tk.N, tk.S, tk.E, tk.W))
-        self.input_file_button.grid(row=0, column=1, sticky=(tk.N, tk.S, tk.E, tk.W))
-        self.output_file.grid(row=1, column=0, sticky=(tk.N, tk.S, tk.E, tk.W))
-        self.output_file_button.grid(row=1, column=1, sticky=(tk.N, tk.S, tk.E, tk.W))
-        self.subtitle_checkbox.grid(row=2, column=0, sticky=(tk.N, tk.S, tk.E, tk.W))
-        self.subtitle_file.grid(row=3, column=0, sticky=(tk.N, tk.S, tk.E, tk.W))
-        self.subtitle_file_button.grid(row=3, column=1, sticky=(tk.N, tk.S, tk.E, tk.W))
-        self.convert_button.grid(row=0, column=0, sticky=(tk.N, tk.S, tk.E, tk.W))
-        self.quit.grid(row=1, column=0, sticky=(tk.N, tk.S, tk.E, tk.W))
+        self.input_file.grid(row=0, column=0, sticky=(tk.W, tk.N, tk.S))
+        self.input_file_button.grid(row=0, column=1, sticky=(tk.N, tk.S, tk.E))
+        self.output_file.grid(row=1, column=0, sticky=(tk.W, tk.N, tk.S))
+        self.output_file_button.grid(row=1, column=1, sticky=(tk.E, tk.N, tk.S))
+        self.subtitle_checkbox.grid(row=2, column=0, sticky=(tk.N, tk.W, tk.S, tk.E), columnspan=2)
+        self.subtitle_file.grid(row=3, column=0, sticky=(tk.W, tk.N, tk.S))
+        self.subtitle_file_button.grid(row=3, column=1, sticky=(tk.E, tk.N, tk.S))
+        self.convert_button.grid(row=0, column=0, sticky=(tk.N, tk.W, tk.S))
+        self.quit.grid(row=0, column=1, sticky=(tk.E, tk.S, tk.N))
         tk.Grid.columnconfigure(self.button_frame, 0, weight=1)
 
     def convert(self):
+        if not self.input_set:
+            messagebox.showerror("Hiba!", "Nem adtál meg bemeneti fájlt!")
+        if not self.output_set:
+            messagebox.showerror("Hiba!", "Nem adtál meg kimeneti fájlt!")
         if not self.subtitle_int.get():
             command = "mencoder -oac mp3lame -ovc xvid -xvidencopts pass=1 -o {1} {0}".format(
-                self.input_filename.get(),
-                self.output_filename.get()
+                self.inf, self.ouf
             )
         else:
             command = "mencoder -oac mp3lame -ovc xvid -xvidencopts pass=1 -sub {2} -o {1} {0}".format(
-                self.input_filename.get(),
-                self.output_filename.get(),
-                self.subtitle_filename.get()
+                self.inf, self.ouf, self.sfn
             )
-
-        print(command)
-        return
         process = subprocess.Popen(command.split(),
                                   stdout=subprocess.PIPE,
                                   stderr=subprocess.PIPE
@@ -109,37 +118,35 @@ class Application(tk.Frame):
             self.mess = messagebox.showerror("Sikertelen", "{0}: {1}".format(self.input_filename.get(), error))
         self.mess = messagebox.showinfo("Sikeres", "Kész: {0}".format(self.output_filename.get()))
 
-    def get_file(self, var):
-        var.set(
-            filedialog.askopenfilename(
-                initialdir=Application.user,
-                title="Válaszd ki a fájlt!"
-            )
+    def get_file(self):
+        self.inf = filedialog.askopenfilename(
+            initialdir=Application.user,
+            title="Válaszd ki a fájlt!"
         )
-        self.output_filename.set("{0}.{1}".format(
-            os.path.splitext(var.get())[0], 'avi'))
+        self.ouf = os.path.splitext(self.inf)[0] + '.avi'
         self.output_file_button.config(state="normal")
         self.convert_button.config(state="normal")
         self.master.update_idletasks()
 
-    def save_file(self, var):
-        var.set(
-            filedialog.asksaveasfilename(
+    def save_file(self):
+        _tmp = filedialog.asksaveasfilename(
                 initialdir=Application.user,
                 initialfile="{0}.{1}".format(os.path.splitext(
                     os.path.basename(self.input_filename.get()))[0], 'avi')
             )
-        )
-        self.convert_button.config(state="normal")
-        self.master.update_idletasks()
+        if os.path.isfile(_tmp):
+            _res = messagebox.askyesno("Van ilyen fájl!", "Felülírjam? ({0})".format(_tmp))
+            if _res:
+                self.ouf = _tmp
+                self.master.update_idletasks()
+            else:
+                self.save_file()
 
-    def get_sub(self, var):
-        var.set(
-            filedialog.askopenfilename(
+    def get_sub(self):
+        self.sfn = filedialog.askopenfilename(
                 initialdir=Application.user,
                 title="Válaszd ki a feliratot!"
             )
-        )
         self.master.update_idletasks()
 
     def subtitle_checked(self):
@@ -149,6 +156,53 @@ class Application(tk.Frame):
         else:
             self.subtitle_file.config(state=tk.DISABLED)
             self.subtitle_file_button.config(state=tk.DISABLED)
+
+    @property
+    def inf(self):
+        return self.__input_filename
+
+    @inf.setter
+    def inf(self, val):
+        self.__input_filename = val
+        self.input_filename.set(
+            os.path.basename(val)
+        )
+        self.__input_set = True
+
+    @property
+    def ouf(self):
+        return self.__output_filename
+
+    @ouf.setter
+    def ouf(self, fn):
+        self.__output_filename = fn
+        self.output_filename.set(
+            os.path.basename(fn)
+        )
+        self.__output_set = True
+
+    @property
+    def sfn(self):
+        return self.__subtitle_filename
+
+    @sfn.setter
+    def sfn(self, fn):
+        self.subtitle_filename.set(
+            os.path.basename(fn)
+        )
+        self.__subtitle_set = True
+
+    @property
+    def input_set(self):
+        return self.__input_set
+
+    @property
+    def output_set(self):
+        return self.__output_set
+
+    @property
+    def subtitle_set(self):
+        return self.__subtitle_set
 
 if __name__ == "__main__":
     root = tk.Tk()
